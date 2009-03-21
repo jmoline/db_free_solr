@@ -1,27 +1,76 @@
 DbFreeSolr
 ==========
 
-Introduction goes here.
+db_free_solr is an extension to (and still requires the installation of) the acts_as_solr full text index search plugin.  It was born out of a desire to take better advantage of the underlying Solr engine's capabilities and reduce the amount of database hits that searching under the original plugin required.
+
+Implementation is fairly simple, and only requires that the plugin be installed, the schema.xml file be copied from the plugins lib directory into the acts_as_solr/solr/solr/conf directory, and a line be added to the environment.rb file to ensure that db_free_solr is loaded after acts_as_solr.  You will also need to rebuild any previously created indexes.
+
+Aside from that, it will mostly likely work with little to no alterations to your code.  The results that are returned are in a similar form to the results you previously received and you should be able to iterate through them in much the same way.  By necessity, though, a couple of the properties (object.id, object.class) will have to be accessed in a slightly different way (object.pk and object.type, respectively).
+
+Advanced db_free_solr
+=====================
+
+For those of you looking to squeeze a little more, in the way of performance, from your search engine there are a couple of additional tweaks/features worth mentioning.
+
+By default, the plugin is set up to both store and index any and all fields that you include in the acts_as_solr line in your model file.  
+
+Example:
+acts_as_solr :fields => [:field1, :field2, :field3]
+
+For the sake of performance, though, you may want to index fields that you won't need returned in the results. and vice versa.  The acts_as_solr plugin allowed developers to specify field types, like so:
+
+acts_as_solr :fields => [{field1 => :text}, {:field2 => :integer}, {:field3 => :date}]
+
+So, what I've done, is to extend those field definitions to include field types for indexing only (_io) and storage only (_so), the default being both.  Like so:
+
+acts_as_solr :fields => [{field1 => :text_io}, {:field2 => :integer_so}, {:field3 => :date}]
+
+In the above example, field1 would be indexed for search purposes only, field2 would be stored only (not searchable), and field3 would be both indexed and stored.
+
+The field types available are as follows:
+
+Symbol					Definition
+------					----------
+:text						text, indexed and stored
+:text_so				text, stored only
+:text_io				text, indexed only
+:string					string, indexed and stored
+:string_so      string, stored only
+:string_io      string, indexed only
+:date  					date, indexed and stored
+:date_so        date, stored only
+:date_io        date, indexed only
+:integer        integer, indexed and stored
+:integer_so     integer, stored only
+:integer_io     integer, indexed only
+:float          float, indexed and stored
+:float_so       float, stored only
+:float_io       float, indexed only
+:boolean        boolean, indexed and stored
+:boolean_so     boolean, stored only
+:boolean_io     boolean, indexed only
 
 
-Example
-=======
-
-Example goes here.
 
 Schema.xml
 ==========
 
+For those interested, this section explains some of the modifications made to the schema.xml file that is included with the plugin.  The information in this section is not required in order to implement the plugin, but may prove useful in any further customization efforts.
+
 The schema.xml file that I've included is pretty basic, so you may want to modify it to better fit your needs.  The relevant points are as follows:
 
-You'll notice in the field definitions towards the end of the file, there are a couple of attributes "indexed" and "stored."  In most acts_as_solr schema.xml files, "indexed" is always set to true and "stored" is always false.  The reason for this is that acts_as_solr assumes that every field you index is for search purposes only, as it only allows the engine to return the primary key field.  All I've done to this file, is selectively change the "stored" attribute on some of the field definitions to true, so that those fields will be returned as data with the search results.
+You'll notice in the field definitions towards the end of the file, there are a couple of attributes "indexed" and "stored."  In most acts_as_solr schema.xml files, "indexed" is always set to true and "stored" is always false.  The reason for this is that acts_as_solr assumes that every field you index is for search purposes only, as it only allows the engine to return the primary key field.  What I've done to the file is to define a few more dynamic fields (to limit your need to interact with the file).  By default, both attributes will now be set to true, so, out of the box, anything you index will be available for search and will be returned with the results.  This may not be ideal for you, though, because it could unnecessarily inflate the Solr files.  To prevent this, I've defined 2 additional dynamic fields for each one that was previously defined.  In other words, where before there was a "*_t" field (t = text), now, there are also "*_st" (st = stored text) and "*_it" (it = indexed text).
 
 Example:
 <dynamicField name="*_t" type="text" indexed="true" stored="true"/>
 
-You can, of course, go into this schema file and define individual fields and their attributes.  The "*_t" wildcard is there to simplify things and minimize the developer's need to interact with the file.
+<dynamicField name="*_st" type="text" indexed="false" stored="true"/>
 
-One other aspect of this file that's worth noting is that it defines a default search field (text) and copies all text and facet fields into that field.  This is what allows you to run a simple query without having to specify fields to be searched.
+<dynamicField name="*_it" type="text" indexed="true" stored="false"/>
+
+You can, of course, go into this schema file and define individual fields and their attributes.  The "*_t" wildcard is there to simplify things and minimize the developer's need to interact with the file (this part of the file is unchanged from the one acts_as_solr provides).
+
+One other aspect of this file that's worth noting is that it defines a default search field (text) and copies all text (*_t) and facet (*_facet) fields into that field.  This is what allows you to run a simple query without having to specify fields to be searched.
 
 Example:
 <defaultSearchField>text</defaultSearchField>
@@ -29,5 +78,4 @@ Example:
 <copyField source="*_t" dest="text"/>
 <copyField source="*_facet" dest="text"/>
 
-
-Copyright (c) 2008 [name of plugin creator], released under the MIT license
+Copyright (c) 2008 James Moline, released under the MIT license
