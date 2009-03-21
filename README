@@ -1,0 +1,33 @@
+DbFreeSolr
+==========
+
+Introduction goes here.
+
+
+Example
+=======
+
+Example goes here.
+
+Schema.xml
+==========
+
+The schema.xml file that I've included is pretty basic, so you may want to modify it to better fit your needs.  The relevant points are as follows:
+
+You'll notice in the field definitions towards the end of the file, there are a couple of attributes "indexed" and "stored."  In most acts_as_solr schema.xml files, "indexed" is always set to true and "stored" is always false.  The reason for this is that acts_as_solr assumes that every field you index is for search purposes only, as it only allows the engine to return the primary key field.  All I've done to this file, is selectively change the "stored" attribute on some of the field definitions to true, so that those fields will be returned as data with the search results.
+
+Example:
+<dynamicField name="*_t" type="text" indexed="true" stored="true"/>
+
+You can, of course, go into this schema file and define individual fields and their attributes.  The "*_t" wildcard is there to simplify things and minimize the developer's need to interact with the file.
+
+One other aspect of this file that's worth noting is that it defines a default search field (text) and copies all text and facet fields into that field.  This is what allows you to run a simple query without having to specify fields to be searched.
+
+Example:
+<defaultSearchField>text</defaultSearchField>
+
+<copyField source="*_t" dest="text"/>
+<copyField source="*_facet" dest="text"/>
+
+
+Copyright (c) 2008 [name of plugin creator], released under the MIT license
